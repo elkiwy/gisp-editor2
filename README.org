@@ -1,0 +1,26 @@
+#+TITLE: Gisp-Editor2
+
+This is an early draft for a mini IDE around my programming language Gisp (A Lisp dialect focussed on creating procedural images and animations).
+
+I already made a Gisp Editor, but that was made with ClojureScruipt and Electron, and I didn't really liked that idea. At the time I just wanted something that I could made quickly and focus on the language itself.
+
+Now I want to make it more personal and lightweight, so I'm building this with pure C and SDL and nothing else. It will be a long way, but fun and interesting nonetheless.
+
+
+* Todo
+
+** Basics
+- [X] File reading from command line
+- [ ] Selection editing
+- [ ] File writing
+
+** Gisp Integration
+- [ ] Gisp execution on current buffer
+- [ ] Console Panel
+- [ ] Image preview Panel
+
+** Extras
+- [ ] File reading from inside the program
+- [ ] Syntax highlight
+- [ ] Basic VIM bindings
+- [ ] Code linting

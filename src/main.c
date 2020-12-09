@@ -92,12 +92,6 @@ void resetSelection(){
     cursor->selectionStart = -1;
 }
 
-void updateTextAreaWithChar(char c){
-    insertCharAtPos(textBuffer, c, cursor->pos);
-    KSDL_moveCursor(cursor, 1, 0);
-    KSDL_updateText(textArea);
-    updateDebugText();
-}
 
 void deleteBeforeCursor(){
     if(cursor->selectionStart != -1){
@@ -120,13 +114,28 @@ void deleteBeforeCursor(){
 }
 
 void deleteAfterCursor(){
-    deleteCharAtPos(textArea->text, cursor->pos+1);
-    KSDL_updateText(textArea);
-    updateDebugText();
-    resetSelection();
+    //For selection deleting, act like backspace
+    if(cursor->selectionStart != -1){
+        deleteBeforeCursor();
+    //Else delete after
+    }else{
+        deleteCharAtPos(textArea->text, cursor->pos+1);
+        KSDL_updateText(textArea);
+        updateDebugText();
+        resetSelection();
+    }
 }
 
+void updateTextAreaWithChar(char c){
+    //Delete first if i'm selecting
+    if(cursor->selectionStart != -1){deleteBeforeCursor();}
 
+    //Update the text area
+    insertCharAtPos(textBuffer, c, cursor->pos);
+    KSDL_moveCursor(cursor, 1, 0);
+    KSDL_updateText(textArea);
+    updateDebugText();
+}
 
 
 
@@ -265,7 +274,7 @@ int main(int argc, char** argv) {
                             case SDLK_RIGHT:     moveCursor( 1,  0, 0); break;
                             case SDLK_UP:        moveCursor( 0, -1, 0); break;
                             case SDLK_DOWN:      moveCursor( 0,  1, 0); break;
-                            default: dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
+                            default: dLog("Key not recognized:");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
                         }
                     }
                     updateDebugText();

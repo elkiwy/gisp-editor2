@@ -71,6 +71,16 @@ void deleteCharAtPos(char* b, unsigned int pos){
     b[size-1] = '\0';
 }
 
+void deleteCharsFromTo(int a, int b){
+        dLogInt("deleting a", a);
+        dLogInt("deleting b", b);
+    int start = (a < b) ? a : b;
+    int end = (a < b) ? b : a;
+    for (int i=start; i<end; i++){
+        dLogInt("Deleting char at", i);
+        deleteCharAtPos(textBuffer, start+1);
+    }
+}
 
 
 /**
@@ -78,6 +88,10 @@ void deleteCharAtPos(char* b, unsigned int pos){
  * Shortcuts
  *
  * */
+void resetSelection(){
+    cursor->selectionStart = -1;
+}
+
 void updateTextAreaWithChar(char c){
     insertCharAtPos(textBuffer, c, cursor->pos);
     KSDL_moveCursor(cursor, 1, 0);
@@ -86,47 +100,68 @@ void updateTextAreaWithChar(char c){
 }
 
 void deleteBeforeCursor(){
-    deleteCharAtPos(textArea->text, cursor->pos);
-    KSDL_moveCursor(cursor, -1, 0);
+    if(cursor->selectionStart != -1){
+        //Delete block
+        deleteCharsFromTo(cursor->selectionStart, cursor->pos);
+
+        //If start is greater then pos i'm ok, else move cursor back to start
+        while (cursor->selectionStart < cursor->pos){
+            KSDL_moveCursor(cursor, -1, 0);
+        }
+    }else{
+        //Delete only one char
+        deleteCharAtPos(textArea->text, cursor->pos);
+        KSDL_moveCursor(cursor, -1, 0);
+    }
+    //Update rendering
     KSDL_updateText(textArea);
     updateDebugText();
+    resetSelection();
 }
 
 void deleteAfterCursor(){
     deleteCharAtPos(textArea->text, cursor->pos+1);
     KSDL_updateText(textArea);
     updateDebugText();
+    resetSelection();
 }
 
 
-void moveCursor(int dx, int dy){
+
+
+
+int safeAreaTop = WINDOW_H*0.1;
+int safeAreaBot = WINDOW_H*0.8;
+void moveCursor(int dx, int dy, int shiftDown){
+    //Handle selection
+    if (shiftDown && cursor->selectionStart == -1){
+        cursor->selectionStart = cursor->pos;
+    }else if (!shiftDown && cursor->selectionStart != -1){
+        cursor->selectionStart = -1;
+    }
+
+    //Update cursor position
     KSDL_moveCursor(cursor, dx, dy);
 
+    //Update scroll position
     int lineHeight = cursor->rect.h;
     int cursorPos = cursor->line * lineHeight;
-    int thresholdLow = textArea->scrollY + WINDOW_H * 0.8;
-    int thresholdHigh = textArea->scrollY + WINDOW_H * 0.1;
+    int thresholdLow = textArea->scrollY + safeAreaBot;
+    int thresholdHigh = textArea->scrollY + safeAreaTop;
 
+    //Scroll up if needed
     while(cursorPos < thresholdHigh){
         textArea->scrollY -= lineHeight;
-        thresholdHigh = textArea->scrollY + WINDOW_H * 0.1;
+        thresholdHigh = textArea->scrollY + safeAreaTop;
     }
 
+    //Scroll down if needed
     while(cursorPos > thresholdLow){
         textArea->scrollY += lineHeight;
-        thresholdLow = textArea->scrollY + WINDOW_H * 0.8;
+        thresholdLow = textArea->scrollY + safeAreaBot;
     }
 }
 
-
-void selectMovingCursor(int dx, int dy){
-
-    //
-    //TODO
-    //
-
-    moveCursor(dx, dy);
-}
 
 
 /**
@@ -136,7 +171,6 @@ void selectMovingCursor(int dx, int dy){
  * */
 void readFileToBuffer(char* path, char* buffer){
     FILE* f = fopen(path, "r");
-    dLogPtr(f);
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -144,6 +178,14 @@ void readFileToBuffer(char* path, char* buffer){
     fclose(f);
     buffer[fsize] = '\0';
 }
+
+void writeBufferToFile(char* path, char* buffer){
+    FILE* f = fopen(path, "w+");
+    fputs(buffer, f);
+    fclose(f);
+    dLog("File written!");
+}
+
 
 
 
@@ -169,7 +211,8 @@ int main(int argc, char** argv) {
     debugText = KSDL_initText(gRenderer, debugBuffer, 0, WINDOW_H-100, WINDOW_W, 100, gFont);
 
     //Check for input
-    if (argc>1){readFileToBuffer(argv[1], textBuffer);
+    char* path;
+    if (argc>1){path = argv[1]; readFileToBuffer(path, textBuffer);
     }else{textBuffer[0] = '\0';}
 
     //Initialize cursor
@@ -178,6 +221,7 @@ int main(int argc, char** argv) {
     //Initialize text area
     textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, WINDOW_W, WINDOW_H, gFont);
     KSDL_updateText(textArea);
+    moveCursor(0, 0, 0);
 
     //Main Loop
     SDL_StartTextInput();
@@ -198,23 +242,29 @@ int main(int argc, char** argv) {
 
                 //Other special Keydown event not intercepted by textInput
                 case SDL_KEYDOWN:
-                    if (event.key.keysym.mod == KMOD_SHIFT){
+
+                    if (event.key.keysym.mod & KMOD_GUI){
                         switch(event.key.keysym.sym){
-                            case SDLK_LEFT:  selectMovingCursor(-1,  0); break;
-                            case SDLK_RIGHT: selectMovingCursor( 1,  0); break;
-                            case SDLK_UP:    selectMovingCursor( 0, -1); break;
-                            case SDLK_DOWN:  selectMovingCursor( 0,  1); break;
+                            case SDLK_s: writeBufferToFile(path, textBuffer); break;
+                        }
+
+                    }else if (event.key.keysym.mod & KMOD_SHIFT){
+                        switch(event.key.keysym.sym){
+                            case SDLK_LEFT:    moveCursor(-1,  0, 1); break;
+                            case SDLK_RIGHT:   moveCursor( 1,  0, 1); break;
+                            case SDLK_UP:      moveCursor( 0, -1, 1); break;
+                            case SDLK_DOWN:    moveCursor( 0,  1, 1); break;
                         }
                     }else{
                         switch(event.key.keysym.sym){
-                            case SDLK_ESCAPE: quit = 1; break;
+                            case SDLK_ESCAPE:    quit = 1; break;
                             case SDLK_BACKSPACE: deleteBeforeCursor(); break;
-                            case SDLK_DELETE:     deleteAfterCursor(); break;
-                            case SDLK_RETURN: updateTextAreaWithChar('\n'); break;
-                            case SDLK_LEFT:  moveCursor(-1,  0); break;
-                            case SDLK_RIGHT: moveCursor( 1,  0); break;
-                            case SDLK_UP:    moveCursor( 0, -1); break;
-                            case SDLK_DOWN:  moveCursor( 0,  1); break;
+                            case SDLK_DELETE:    deleteAfterCursor(); break;
+                            case SDLK_RETURN:    updateTextAreaWithChar('\n'); break;
+                            case SDLK_LEFT:      moveCursor(-1,  0, 0); break;
+                            case SDLK_RIGHT:     moveCursor( 1,  0, 0); break;
+                            case SDLK_UP:        moveCursor( 0, -1, 0); break;
+                            case SDLK_DOWN:      moveCursor( 0,  1, 0); break;
                             default: dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
                         }
                     }

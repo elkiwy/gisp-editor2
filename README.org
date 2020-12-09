@@ -11,8 +11,8 @@ Now I want to make it more personal and lightweight, so I'm building this with p
 
 ** Basics
 - [X] File reading from command line
-- [ ] Selection editing
-- [ ] File writing
+- [X] Selection editing
+- [X] File writing
 
 ** Gisp Integration
 - [ ] Gisp execution on current buffer

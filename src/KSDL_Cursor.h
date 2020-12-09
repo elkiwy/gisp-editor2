@@ -7,7 +7,6 @@
 
 
 
-
 typedef struct KSDL_Cursor{
     int pos;
     char* buffer;
@@ -17,6 +16,7 @@ typedef struct KSDL_Cursor{
     SDL_Renderer* renderer;
     SDL_Texture* texture;
     SDL_Rect rect;
+    TTF_Font* font;
 
     //Line delimiters
     unsigned int lineStart;
@@ -28,6 +28,9 @@ typedef struct KSDL_Cursor{
 
     //Line buffer
     char* lineText;
+
+    //Selection
+    int selectionStart;
 
 
 }KSDL_Cursor;
@@ -50,6 +53,7 @@ KSDL_Cursor* KSDL_initCursor(SDL_Renderer* r, char* buffer, unsigned int len, TT
     c->rect.y = 0;
     c->rect.w = s->w;
     c->rect.h = s->h-1;
+    c->font = f;
 
     //Line delimiters
     c->lineStart = 0;
@@ -66,6 +70,9 @@ KSDL_Cursor* KSDL_initCursor(SDL_Renderer* r, char* buffer, unsigned int len, TT
     lineBuffer[c->lineEnd] = '\0';
     c->lineText = lineBuffer;
 
+    //Selection
+    c->selectionStart = -1;
+
     return c;
 }
 
@@ -78,6 +85,21 @@ void KSDL_freeCursor(KSDL_Cursor* c){
     free(c);
 }
 
+
+
+void positionToLineAndColumn(char* buffer, int pos, int* line, int* col){
+    int l = 0; int c = 0; int i = 0;
+    while(i < pos){
+        if (buffer[i]=='\n'){
+            c = 0;
+            l++;
+        }else{
+            c++;
+        }
+        i++;
+    }
+    *line = l; *col = c;
+}
 
 
 ///Updates the current line information of the cursor
@@ -97,7 +119,7 @@ void KSDL_updateCurrentLine(KSDL_Cursor* c){
                 prevNLPos = i+1;
             }
         }else if (c->buffer[i]=='\0'){
-            nextNLPos = i-1;
+            nextNLPos = i;
             break;
         }
         i++;
@@ -123,7 +145,7 @@ void KSDL_updateCurrentLine(KSDL_Cursor* c){
 
 
 void KSDL_moveCursor(KSDL_Cursor* c, int dx, int dy){
-    int maxPos = strlen(c->buffer);
+    int maxPos = strlen(c->buffer)-1;
     if (dx!=0){
         //Update cursors position for LEFT and RIGHT
         c->pos += dx;
@@ -164,9 +186,72 @@ void KSDL_moveCursor(KSDL_Cursor* c, int dx, int dy){
 }
 
 
+
+
+
+
 void KSDL_drawCursor(KSDL_Cursor* c, int scrollX, int scrollY){
     SDL_Rect scrolledRect = {c->rect.x - scrollX, c->rect.y - scrollY, c->rect.w, c->rect.h};
     SDL_RenderCopy(c->renderer, c->texture, NULL, &scrolledRect);
+
+
+
+    if (c->selectionStart != -1){
+        /* setup */
+        int a = (c->selectionStart < c->pos) ? c->selectionStart : c->pos;
+        int b = (c->selectionStart < c->pos) ? c->pos : c->selectionStart;
+        if (a==b){return;}
+
+        char tmp[c->bufferLen];
+        strncpy(tmp, &(c->buffer[a]), b-a);
+        tmp[b-a] = '\0';
+
+
+        /* line splitting */
+        int linesPos[c->bufferLen];
+        int linesCount = 0;
+        linesPos[0] = 0;
+        for(int i=0;i<strlen(tmp);++i){
+            if (tmp[i]=='\n'){
+                linesCount++;
+                linesPos[linesCount] = i+1;
+            }
+        }
+        linesPos[linesCount+1] = b-a;
+
+
+        /* Rendering */
+        SDL_Color fg = {0x00, 0x00, 0x00, 0xff};
+        SDL_Color bg = {0xff, 0xff, 0xff, 0xff};
+        int lineHeight = c->rect.h;
+        for (int i=0;i<=linesCount;++i){
+
+            /* Get the line and column of the first point */
+            int tmp_col; int tmp_line;
+            positionToLineAndColumn(c->buffer, a+linesPos[i], &tmp_line, &tmp_col);
+            int tmp_x = tmp_col * c->rect.w;
+            int tmp_y = tmp_line * c->rect.h;
+
+            /* get current line text */
+            int lineLength = linesPos[i+1] - linesPos[i];
+            if (lineLength<=0){continue;}
+            char tmpLine[lineLength+1];
+            strncpy(tmpLine, &(tmp[linesPos[i]]), lineLength);
+            tmpLine[lineLength] = '\0';
+
+            if (tmpLine[lineLength-1] == '\n'){tmpLine[lineLength-1] = '\0';}
+
+            /* render it */
+            SDL_Surface* surface = TTF_RenderText_Shaded(c->font, tmpLine, fg, bg);
+            if (surface==NULL){continue;}
+            SDL_Texture* texture = SDL_CreateTextureFromSurface(c->renderer, surface);
+            SDL_Rect r = {tmp_x - scrollX, tmp_y - scrollY, surface->w, surface->h};
+            SDL_RenderCopy(c->renderer, texture, NULL, &r);
+            SDL_FreeSurface(surface);
+        }
+
+        //printf("Selection is %s", tmp);fflush(stdout);
+    }
 }
 
 

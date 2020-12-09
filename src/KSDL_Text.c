@@ -22,6 +22,8 @@ KSDL_Text* KSDL_initText(SDL_Renderer* r, char* text, int x, int y, int w, int h
 }
 
 void KSDL_updateText(KSDL_Text* t){
+
+
     SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(t->font, t->text, t->fgColor, t->maxWidth);
     if (strlen(t->text) == 0){surface = TTF_RenderText_Blended_Wrapped(t->font, " ", t->fgColor, t->maxWidth);}
     t->texture = SDL_CreateTextureFromSurface(t->renderer, surface);

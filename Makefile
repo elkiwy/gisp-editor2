@@ -25,4 +25,4 @@ run: build/gisp-editor2
 
 
 test: build/gisp-editor2
-	./build/gisp-editor2 src/main.c
+	./build/gisp-editor2 test.txt

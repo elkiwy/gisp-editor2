@@ -17,6 +17,9 @@ typedef struct KSDL_Text{
 
     int scrollX;
     int scrollY;
+
+    SDL_Rect backgroundRect;
+    SDL_Color backgroundColor;
 }KSDL_Text;
 
 KSDL_Text* KSDL_initText(SDL_Renderer* r, char* text, int x, int y, int w, int h, TTF_Font* f);

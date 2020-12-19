@@ -1,6 +1,7 @@
 //Include SDL
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 
 //Include standard libraries
 #include <string.h>
@@ -9,10 +10,11 @@
 //Include other soruce files
 #include "KSDL_Text.h"
 #include "KSDL_Cursor.h"
+#include "KSDL_Image.h"
 
 //Define constants
-#define WINDOW_W 1280
-#define WINDOW_H 720
+#define WINDOW_W 1920
+#define WINDOW_H 1080
 #define BUFFER_SIZE 1024*10
 
 //Declare global variables
@@ -23,6 +25,12 @@ TTF_Font* gFont;
 //Text area
 KSDL_Text* textArea;
 char textBuffer[BUFFER_SIZE];
+
+//Console
+KSDL_Text* consolePanel;
+
+//Preview
+KSDL_Image* outputPreview;
 
 //Cursror
 KSDL_Cursor* cursor;
@@ -140,7 +148,7 @@ void updateTextAreaWithChar(char c){
 
 
 int safeAreaTop = WINDOW_H*0.1;
-int safeAreaBot = WINDOW_H*0.8;
+int safeAreaBot = WINDOW_H*0.6;
 void moveCursor(int dx, int dy, int shiftDown){
     //Handle selection
     if (shiftDown && cursor->selectionStart == -1){
@@ -195,6 +203,26 @@ void writeBufferToFile(char* path, char* buffer){
     dLog("File written!");
 }
 
+void saveAndRunOnBuffer(char* path, char* buffer){
+    //Save the file
+    writeBufferToFile(path, buffer);
+
+    //Run it
+    char cmd[1024];
+    sprintf(cmd, "gisp %s", path);
+    system(cmd);
+
+    //Save output
+    char line[1024*10];
+    FILE* f = popen(cmd, "r");
+    consolePanel->text[0] = '\0';
+    while(fgets(line, 1024, f)){
+        strcat(consolePanel->text, line);
+    }
+    pclose(f);
+    KSDL_updateText(consolePanel);
+    KSDL_updateImage(outputPreview);
+}
 
 
 
@@ -211,25 +239,53 @@ int main(int argc, char** argv) {
     SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
     SDL_CreateWindowAndRenderer(WINDOW_W, WINDOW_H, 0, &gWindow, &gRenderer);
     SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0);
+
+    //Init TTF
     TTF_Init();
     gFont = TTF_OpenFont("../fonts/FiraCode-Regular.ttf", 14);
     if (gFont == NULL) {fprintf(stderr, "error: font not found\n"); return 1;}
 
+    //Init Image
+    int imgFlags = IMG_INIT_PNG;
+    if(!(IMG_Init(imgFlags) & imgFlags)){printf("Can't initialize SDL_image lib"); return 1;}
+
     //Debug text
     char debugBuffer[1024] = "";
-    debugText = KSDL_initText(gRenderer, debugBuffer, 0, WINDOW_H-100, WINDOW_W, 100, gFont);
+    debugText = KSDL_initText(gRenderer, debugBuffer, 0, WINDOW_H*0.1, WINDOW_W*0.8, WINDOW_H*0.6, gFont);
 
     //Check for input
     char* path;
     if (argc>1){path = argv[1]; readFileToBuffer(path, textBuffer);
     }else{textBuffer[0] = '\0';}
 
-    //Initialize cursor
-    cursor = KSDL_initCursor(gRenderer, textBuffer, BUFFER_SIZE, gFont);
+    //Parameters
+    int previewPanelWidth = WINDOW_W*0.3;
+    int consoleBufferHeight = WINDOW_H*0.3;
+
+
+    //Console
+    char consoleBuffer[1024*10] = "Ciccipuzzoli";
+    consolePanel = KSDL_initText(gRenderer, consoleBuffer, 0, WINDOW_H-consoleBufferHeight, WINDOW_W-previewPanelWidth, consoleBufferHeight, gFont);
+    consolePanel->backgroundColor.r = 0x20;
+    consolePanel->backgroundColor.g = 0x20;
+    consolePanel->backgroundColor.b = 0x20;
+    consolePanel->backgroundColor.a = 0xff;
+
+    //Output preview
+    char outputPath[1024] = "output.png";
+    outputPreview = KSDL_initImage(gRenderer, outputPath, WINDOW_W-previewPanelWidth, 0, previewPanelWidth, WINDOW_H);
+    outputPreview->backgroundColor.r = 0x10;
+    outputPreview->backgroundColor.g = 0x10;
+    outputPreview->backgroundColor.b = 0x10;
+    outputPreview->backgroundColor.a = 0xff;
+
 
     //Initialize text area
-    textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, WINDOW_W, WINDOW_H, gFont);
+    textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, WINDOW_W-previewPanelWidth, WINDOW_H-consoleBufferHeight, gFont);
     KSDL_updateText(textArea);
+
+    //Initialize cursor
+    cursor = KSDL_initCursor(gRenderer, textBuffer, BUFFER_SIZE, gFont);
     moveCursor(0, 0, 0);
 
     //Main Loop
@@ -255,6 +311,7 @@ int main(int argc, char** argv) {
                     if (event.key.keysym.mod & KMOD_GUI){
                         switch(event.key.keysym.sym){
                             case SDLK_s: writeBufferToFile(path, textBuffer); break;
+                            case SDLK_r: saveAndRunOnBuffer(path, textBuffer); break;
                         }
 
                     }else if (event.key.keysym.mod & KMOD_SHIFT){
@@ -288,8 +345,13 @@ int main(int argc, char** argv) {
 
         //Render text area
         KSDL_drawText(textArea);
-        //KSDL_drawText(debugText);
         KSDL_drawCursor(cursor, textArea->scrollX, textArea->scrollY);
+
+        //Render console
+        KSDL_drawText(consolePanel);
+
+        //Render preview
+        KSDL_drawImage(outputPreview);
 
         //Render all the Renderer informations into the window
         SDL_RenderPresent(gRenderer);

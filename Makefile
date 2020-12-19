@@ -6,7 +6,7 @@ SOURCES := $(wildcard $(SRC)/*.c)
 OBJECTS := $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SOURCES))
 
 FLAGS = -g -Og -Wshadow -Wextra -Werror=implicit-int -Werror=incompatible-pointer-types -Werror=int-conversion -fsanitize=address -fsanitize=undefined
-LIBS = -L /usr/local/lib -l SDL2-2.0.0 -l SDL2_ttf
+LIBS = -L /usr/local/lib -l SDL2-2.0.0 -l SDL2_ttf -l SDL2_image
 
 
 

@@ -211,7 +211,7 @@ void KSDL_drawCursor(KSDL_Cursor* c, int scrollX, int scrollY){
         int linesPos[c->bufferLen];
         int linesCount = 0;
         linesPos[0] = 0;
-        for(int i=0;i<strlen(tmp);++i){
+        for(unsigned int i=0;i<strlen(tmp);++i){
             if (tmp[i]=='\n'){
                 linesCount++;
                 linesPos[linesCount] = i+1;
@@ -248,6 +248,7 @@ void KSDL_drawCursor(KSDL_Cursor* c, int scrollX, int scrollY){
             SDL_Rect r = {tmp_x - scrollX, tmp_y - scrollY, surface->w, surface->h};
             SDL_RenderCopy(c->renderer, texture, NULL, &r);
             SDL_FreeSurface(surface);
+            SDL_DestroyTexture(texture);
         }
 
         //printf("Selection is %s", tmp);fflush(stdout);

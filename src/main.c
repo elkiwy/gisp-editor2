@@ -21,6 +21,7 @@
 SDL_Renderer* gRenderer;
 SDL_Window* gWindow;
 TTF_Font* gFont;
+int dpiScale = 1;
 
 //Text area
 KSDL_Text* textArea;
@@ -236,13 +237,21 @@ void saveAndRunOnBuffer(char* path, char* buffer){
  * */
 int main(int argc, char** argv) {
     //Initialize SDL, Window, Renderer, and Fonts
-    SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
-    SDL_CreateWindowAndRenderer(WINDOW_W, WINDOW_H, 0, &gWindow, &gRenderer);
+    SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO );
+
+    gWindow = SDL_CreateWindow("Gisp Editor 2", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H, SDL_WINDOW_ALLOW_HIGHDPI);
+    gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0);
+
+
+    int window_w, drawable_w;
+    SDL_GetWindowSize(gWindow, &window_w, NULL);
+    SDL_GL_GetDrawableSize(gWindow, &drawable_w, NULL);
+    dpiScale = drawable_w / window_w;
 
     //Init TTF
     TTF_Init();
-    gFont = TTF_OpenFont("../fonts/FiraCode-Regular.ttf", 14);
+    gFont = TTF_OpenFont("../fonts/FiraCode-Regular.ttf", 14*dpiScale);
     if (gFont == NULL) {fprintf(stderr, "error: font not found\n"); return 1;}
 
     //Init Image
@@ -251,7 +260,7 @@ int main(int argc, char** argv) {
 
     //Debug text
     char debugBuffer[1024] = "";
-    debugText = KSDL_initText(gRenderer, debugBuffer, 0, WINDOW_H*0.1, WINDOW_W*0.8, WINDOW_H*0.6, gFont);
+    debugText = KSDL_initText(gRenderer, debugBuffer, 0, (WINDOW_H*0.1)*dpiScale, (WINDOW_W*0.8)*dpiScale, (WINDOW_H*0.6)*dpiScale, gFont);
 
     //Check for input
     char* path;
@@ -262,10 +271,9 @@ int main(int argc, char** argv) {
     int previewPanelWidth = WINDOW_W*0.3;
     int consoleBufferHeight = WINDOW_H*0.3;
 
-
     //Console
     char consoleBuffer[1024*10] = "Ciccipuzzoli";
-    consolePanel = KSDL_initText(gRenderer, consoleBuffer, 0, WINDOW_H-consoleBufferHeight, WINDOW_W-previewPanelWidth, consoleBufferHeight, gFont);
+    consolePanel = KSDL_initText(gRenderer, consoleBuffer, 0, (WINDOW_H-consoleBufferHeight)*dpiScale, (WINDOW_W-previewPanelWidth)*dpiScale, consoleBufferHeight*dpiScale, gFont);
     consolePanel->backgroundColor.r = 0x20;
     consolePanel->backgroundColor.g = 0x20;
     consolePanel->backgroundColor.b = 0x20;
@@ -273,7 +281,7 @@ int main(int argc, char** argv) {
 
     //Output preview
     char outputPath[1024] = "output.png";
-    outputPreview = KSDL_initImage(gRenderer, outputPath, WINDOW_W-previewPanelWidth, 0, previewPanelWidth, WINDOW_H);
+    outputPreview = KSDL_initImage(gRenderer, outputPath, (WINDOW_W-previewPanelWidth)*dpiScale, 0, previewPanelWidth*dpiScale, WINDOW_H);
     outputPreview->backgroundColor.r = 0x10;
     outputPreview->backgroundColor.g = 0x10;
     outputPreview->backgroundColor.b = 0x10;
@@ -281,7 +289,7 @@ int main(int argc, char** argv) {
 
 
     //Initialize text area
-    textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, WINDOW_W-previewPanelWidth, WINDOW_H-consoleBufferHeight, gFont);
+    textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, (WINDOW_W-previewPanelWidth)*dpiScale, (WINDOW_H-consoleBufferHeight)*dpiScale, gFont);
     KSDL_updateText(textArea);
 
     //Initialize cursor

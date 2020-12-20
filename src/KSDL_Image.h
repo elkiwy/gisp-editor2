@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL2_rotozoom.h>
 
 typedef struct KSDL_Image{
     char* imagePath;
@@ -28,9 +29,7 @@ KSDL_Image* KSDL_initImage(SDL_Renderer* r, char* path, int x, int y, int w, int
     i->rect.x = x;
     i->rect.y = y;
     i->rect.w = w;
-    i->rect.h = h;
-
-    KSDL_updateImage(i);
+    i->rect.h = w;
 
     i->backgroundColor.r = 0x00;
     i->backgroundColor.g = 0x00;
@@ -40,6 +39,9 @@ KSDL_Image* KSDL_initImage(SDL_Renderer* r, char* path, int x, int y, int w, int
     i->backgroundRect.y = y;
     i->backgroundRect.w = w;
     i->backgroundRect.h = h;
+
+    KSDL_updateImage(i);
+
     return i;
 }
 
@@ -51,28 +53,14 @@ void KSDL_freeImage(KSDL_Image* i){
 
 void KSDL_updateImage(KSDL_Image* i){
     //Read from file and create original surface
-    SDL_RWops* rwop = SDL_RWFromFile(i->imagePath, "rb");
-    SDL_Surface* surface = IMG_LoadPNG_RW(rwop);
+    SDL_Surface* surface = IMG_Load(i->imagePath);
     if(surface == NULL){printf("\n!!! Can't load image '%s'.\n", i->imagePath); return;}
 
-    //Define target dimensions
-    int targetSize = (surface->w < i->rect.w) ? surface->w : i->rect.w;
-    SDL_Rect targetDimensions = {0,0,targetSize,targetSize,};
-
-    //Create a 32BPP version of the original surface
-    SDL_Surface* p32BPPSurface = SDL_CreateRGBSurface(surface->flags, surface->w, surface->h, 32, surface->format->Rmask, surface->format->Gmask, surface->format->Bmask, surface->format->Amask);
-    if(SDL_BlitSurface(surface, NULL, p32BPPSurface, NULL) < 0){printf("Error did not blit surface %s\n", SDL_GetError());return;}
-
-    //Scale the 32BPP version
-    SDL_Surface* scaledSurface = SDL_CreateRGBSurface(p32BPPSurface->flags, targetSize, targetSize, p32BPPSurface->format->BitsPerPixel, p32BPPSurface->format->Rmask, p32BPPSurface->format->Gmask, p32BPPSurface->format->Bmask, p32BPPSurface->format->Amask);
-    SDL_FillRect(scaledSurface, &targetDimensions, SDL_MapRGBA(scaledSurface->format, 255, 0, 0, 255));
-    if (SDL_BlitScaled(p32BPPSurface, NULL, scaledSurface, NULL) < 0){printf("Error did not scale surface: %s\n", SDL_GetError()); SDL_FreeSurface(scaledSurface);return;}
-
-    //Replace the original surface with the scaled one
+    //Get the scale factor needed and scale if with SDL_gfx rotozoom lib
+    float scale = (float)i->backgroundRect.w / (float)surface->w;
+    SDL_Surface* zoomedSurface = zoomSurface(surface, scale, scale, SMOOTHING_ON);
     SDL_FreeSurface(surface);
-    surface = scaledSurface;
-
-    //Get the resized dimension (should be == to the target dimensions)
+    surface = zoomedSurface;
     i->rect.w = surface->w;
     i->rect.h = surface->h;
 

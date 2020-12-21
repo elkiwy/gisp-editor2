@@ -58,31 +58,79 @@ void updateDebugText(){
 
 
 
+
+
+
+/**
+ *
+ * Commands
+ *
+ * */
+//Define the possible commands operations
+typedef enum {INS, DEL} CommandOperation;
+
+//Define the struct for each command
+typedef struct Command{
+    char c;
+    int pos;
+    CommandOperation op;
+}Command;
+
+//Initialize the commands stack and stackpointer
+Command commandsStack[1024];
+int commandsStackPtr = 0;
+int executingCommand = 0;
+
+///Push a new command to the commands stack
+void pushCommand(char c, int pos, CommandOperation op){
+    //Make new object
+    commandsStack[commandsStackPtr].c = c;
+    commandsStack[commandsStackPtr].pos = pos;
+    commandsStack[commandsStackPtr].op = op;
+
+    //Push into the stack
+    commandsStackPtr++;
+}
+
+
+void undo();
+
+
+
+
+
 /**
  *
  * Utilities
  *
  * */
 void insertCharAtPos(char* b, char c, unsigned int pos){
+    //Insert the new character
     int size_after = strlen(b)-pos;
     char tempBuff[BUFFER_SIZE] = {};
     strncpy(tempBuff, &b[pos], size_after);
     b[pos] = c;
     strncpy(&b[pos+1], tempBuff, size_after);
+
+    //Push a new command
+    if(executingCommand==0){pushCommand(c, pos, INS);}
 }
 
 void deleteCharAtPos(char* b, unsigned int pos){
+    //Delete the char
     int size = strlen(b);
     int size_after = size-pos;
+    char c = b[pos-1];
     char tempBuff[BUFFER_SIZE] = {};
     strncpy(tempBuff, &b[pos], size_after);
     strncpy(&b[pos-1], tempBuff, size_after);
     b[size-1] = '\0';
+
+    //Push a new command
+    if(executingCommand==0){pushCommand(c, pos, DEL);}
 }
 
 void deleteCharsFromTo(int a, int b){
-        dLogInt("deleting a", a);
-        dLogInt("deleting b", b);
     int start = (a < b) ? a : b;
     int end = (a < b) ? b : a;
     for (int i=start; i<end; i++){
@@ -181,6 +229,46 @@ void moveCursor(int dx, int dy, int shiftDown){
 }
 
 
+void moveCursorAbsolute(int pos){
+    cursor->pos = pos;
+    KSDL_moveCursor(cursor, 0, 0);
+}
+
+
+
+
+
+
+/**
+ *
+ * Undo
+ *
+ * */
+
+//Execute one undo operation
+void undo(){
+    if (commandsStackPtr<=0){return;}
+    executingCommand = 1;
+    Command c = commandsStack[commandsStackPtr-1];
+    if (c.op == INS){
+        deleteCharAtPos(textBuffer, c.pos+1);
+
+    }else if (c.op == DEL){
+        insertCharAtPos(textBuffer, c.c, c.pos-1);
+    }
+
+    KSDL_updateText(textArea);
+    moveCursorAbsolute(c.pos);
+
+    //Pop the command
+    commandsStackPtr--;
+    executingCommand = 0;
+}
+
+
+
+
+
 
 /**
  *
@@ -224,8 +312,6 @@ void saveAndRunOnBuffer(char* path, char* buffer){
     KSDL_updateText(consolePanel);
     KSDL_updateImage(outputPreview);
 }
-
-
 
 
 
@@ -320,6 +406,7 @@ int main(int argc, char** argv) {
                         switch(event.key.keysym.sym){
                             case SDLK_s: writeBufferToFile(path, textBuffer); break;
                             case SDLK_r: saveAndRunOnBuffer(path, textBuffer); break;
+                            case SDLK_z: undo(); break;
                         }
 
                     }else if (event.key.keysym.mod & KMOD_SHIFT){

@@ -150,7 +150,7 @@ void KSDL_moveCursor(KSDL_Cursor* c, int dx, int dy){
         //Update cursors position for LEFT and RIGHT
         c->pos += dx;
 
-    }else{
+    }else if(dy!=0){
         //Move to the start of the next line
         if(dy==1){
             //Go to next line

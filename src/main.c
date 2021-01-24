@@ -13,8 +13,8 @@
 #include "KSDL_Image.h"
 
 //Define constants
-#define WINDOW_W 1920
-#define WINDOW_H 1080
+#define WINDOW_W 1920*0.85
+#define WINDOW_H 1080*0.85
 #define BUFFER_SIZE 1024*10
 
 //Declare global variables

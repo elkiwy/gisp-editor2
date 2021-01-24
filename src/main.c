@@ -26,6 +26,12 @@ int dpiScale = 1;
 //Text area
 KSDL_Text* textArea;
 char textBuffer[BUFFER_SIZE];
+typedef enum {INPUT_SIMPLE, INPUT_VIM} InputMode;
+InputMode inputMode = INPUT_VIM;
+typedef enum {VIM_NORMAL, VIM_INSERT} VimMode;
+typedef enum {VIM_NONE, VIM_CHANGE, VIM_DELETE} VimSubMode;
+VimMode vimMode = VIM_NORMAL;
+VimSubMode vimSubMode = VIM_NONE;
 
 //Console
 KSDL_Text* consolePanel;
@@ -316,6 +322,88 @@ void saveAndRunOnBuffer(char* path, char* buffer){
 
 
 
+
+
+
+
+
+
+
+
+
+/**
+ *
+ * Vim
+ *
+ * */
+
+int jumpWord(int dir){
+    int bufferLength = strlen(textBuffer);
+    int nextWordPos = cursor->pos;
+    char currentChar,previousChar;
+    do{ nextWordPos += dir;
+        if (nextWordPos+1 > bufferLength){break;}
+        if (nextWordPos <= 0){break;}
+        currentChar = textBuffer[nextWordPos];
+        previousChar = textBuffer[nextWordPos-1];
+    }while(isspace(currentChar) || (isalnum(currentChar) && isalnum(previousChar)));
+    return nextWordPos;
+}
+
+
+void motionTo(int pos){
+    if (vimSubMode == VIM_NONE){
+        moveCursorAbsolute(pos);
+
+    }else if (vimSubMode == VIM_CHANGE){
+
+
+    }else if (vimSubMode == VIM_DELETE){
+        deleteCharsFromTo(cursor->pos, pos);
+        moveCursorAbsolute(cursor->pos);
+    }
+    KSDL_updateText(textArea);
+    vimSubMode = VIM_NONE;
+}
+
+
+
+
+void vim_escape(){
+    vimMode = VIM_NORMAL;
+    vimSubMode = VIM_NONE;
+    KSDL_changeCursor(cursor, '_', 0);
+}
+
+
+void vim_i(){
+    vimMode = VIM_INSERT;
+    KSDL_changeCursor(cursor, '|', -0.5);
+}
+
+
+
+void vim_c(){vimSubMode = VIM_CHANGE;}
+void vim_d(){vimSubMode = VIM_DELETE;}
+
+void vim_w(){motionTo(jumpWord(1));}
+void vim_b(){motionTo(jumpWord(-1));}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /**
  *
  * Main
@@ -373,7 +461,6 @@ int main(int argc, char** argv) {
     outputPreview->backgroundColor.b = 0x10;
     outputPreview->backgroundColor.a = 0xff;
 
-
     //Initialize text area
     textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, (WINDOW_W-previewPanelWidth)*dpiScale, (WINDOW_H-consoleBufferHeight)*dpiScale, gFont);
     KSDL_updateText(textArea);
@@ -381,6 +468,8 @@ int main(int argc, char** argv) {
     //Initialize cursor
     cursor = KSDL_initCursor(gRenderer, textBuffer, BUFFER_SIZE, gFont);
     moveCursor(0, 0, 0);
+
+    KSDL_changeCursor(cursor, '_', 0);
 
     //Main Loop
     SDL_StartTextInput();
@@ -396,7 +485,10 @@ int main(int argc, char** argv) {
 
                 //TextInput event
                 case SDL_TEXTINPUT:
-                    updateTextAreaWithChar(event.text.text[0]);
+                    if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
+                        //viminsert/basic input
+                        updateTextAreaWithChar(event.text.text[0]);
+                    }
                     break;
 
                 //Other special Keydown event not intercepted by textInput
@@ -408,27 +500,54 @@ int main(int argc, char** argv) {
                             case SDLK_r: saveAndRunOnBuffer(path, textBuffer); break;
                             case SDLK_z: undo(); break;
                         }
+                    }
 
-                    }else if (event.key.keysym.mod & KMOD_SHIFT){
-                        switch(event.key.keysym.sym){
-                            case SDLK_LEFT:    moveCursor(-1,  0, 1); break;
-                            case SDLK_RIGHT:   moveCursor( 1,  0, 1); break;
-                            case SDLK_UP:      moveCursor( 0, -1, 1); break;
-                            case SDLK_DOWN:    moveCursor( 0,  1, 1); break;
+                    if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
+                        //Normal basic input are handled in SDL_TEXTINPUT above,
+                        //Here handles normal movements and special keys
+                        if (event.key.keysym.mod & KMOD_SHIFT){
+                            //Command modifiers
+                            switch(event.key.keysym.sym){
+                                case SDLK_LEFT:    moveCursor(-1,  0, 1); break;
+                                case SDLK_RIGHT:   moveCursor( 1,  0, 1); break;
+                                case SDLK_UP:      moveCursor( 0, -1, 1); break;
+                                case SDLK_DOWN:    moveCursor( 0,  1, 1); break;
+                            }
+                        }else{
+                            //No modifiers
+                            switch(event.key.keysym.sym){
+                                case SDLK_ESCAPE:    quit = 1; break;
+                                case SDLK_BACKSPACE: deleteBeforeCursor(); break;
+                                case SDLK_DELETE:    deleteAfterCursor(); break;
+                                case SDLK_RETURN:    updateTextAreaWithChar('\n'); break;
+                                case SDLK_LEFT:      moveCursor(-1,  0, 0); break;
+                                case SDLK_RIGHT:     moveCursor( 1,  0, 0); break;
+                                case SDLK_UP:        moveCursor( 0, -1, 0); break;
+                                case SDLK_DOWN:      moveCursor( 0,  1, 0); break;
+                                default: dLog("Key not recognized in simple/viminput mode:");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
+                            }
                         }
-                    }else{
+
+                    }else if (inputMode == INPUT_VIM && vimMode == VIM_NORMAL){
+                        //Vim bindings
+                        dLog("SDL_KEYDOWN:");
                         switch(event.key.keysym.sym){
-                            case SDLK_ESCAPE:    quit = 1; break;
-                            case SDLK_BACKSPACE: deleteBeforeCursor(); break;
-                            case SDLK_DELETE:    deleteAfterCursor(); break;
-                            case SDLK_RETURN:    updateTextAreaWithChar('\n'); break;
-                            case SDLK_LEFT:      moveCursor(-1,  0, 0); break;
-                            case SDLK_RIGHT:     moveCursor( 1,  0, 0); break;
-                            case SDLK_UP:        moveCursor( 0, -1, 0); break;
-                            case SDLK_DOWN:      moveCursor( 0,  1, 0); break;
-                            default: dLog("Key not recognized:");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
+                            case SDLK_ESCAPE:    vim_escape(); break;
+                            case SDLK_i:  vim_i(); break;
+                            case SDLK_w:  vim_w(); break;
+                            case SDLK_b:  vim_b(); break;
+
+                            case SDLK_c:  vim_c(); break;
+                            case SDLK_d:  vim_d(); break;
+
+                            case SDLK_h:  moveCursor(-1, 0, 0); break;
+                            case SDLK_j:  moveCursor( 0, 1, 0); break;
+                            case SDLK_k:  moveCursor( 0,-1, 0); break;
+                            case SDLK_l:  moveCursor( 1, 0, 0); break;
+                            default: dLog("Key not recognized in vim mode (special key):");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
                         }
                     }
+
                     updateDebugText();
             }
         }

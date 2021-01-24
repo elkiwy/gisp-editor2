@@ -17,6 +17,7 @@ typedef struct KSDL_Cursor{
     SDL_Texture* texture;
     SDL_Rect rect;
     TTF_Font* font;
+    float charOffset;
 
     //Line delimiters
     unsigned int lineStart;
@@ -47,13 +48,18 @@ KSDL_Cursor* KSDL_initCursor(SDL_Renderer* r, char* buffer, unsigned int len, TT
     //SDL stuff
     c->renderer = r;
     SDL_Color color = {0xff,0xff,0xff,0xff};
-    SDL_Surface* s = TTF_RenderText_Blended(f, "|", color);
+
+
+    SDL_Surface* s = TTF_RenderText_Blended(f, "o", color);
     c->texture = SDL_CreateTextureFromSurface(r, s);
-    c->rect.x = s->w * -0.5;
+    c->charOffset = -0.5;
+    c->rect.x = s->w * c->charOffset;
     c->rect.y = 0;
     c->rect.w = s->w;
-    c->rect.h = s->h-1;
     c->font = f;
+    SDL_Surface* fakeSymbolForHeight = TTF_RenderText_Blended(f, "o", color);
+    c->rect.h = fakeSymbolForHeight->h;
+    SDL_FreeSurface(fakeSymbolForHeight);
 
     //Line delimiters
     c->lineStart = 0;
@@ -74,6 +80,17 @@ KSDL_Cursor* KSDL_initCursor(SDL_Renderer* r, char* buffer, unsigned int len, TT
     c->selectionStart = -1;
 
     return c;
+}
+
+void KSDL_changeCursor(KSDL_Cursor* c, char symbol, float charOffset){
+    SDL_Color color = {0xff,0xff,0xff,0xff};
+    char symbolStr[2]; symbolStr[0] = symbol; symbolStr[1] = '\0';
+    SDL_Surface* s = TTF_RenderText_Blended(c->font, symbolStr, color);
+    c->texture = SDL_CreateTextureFromSurface(c->renderer, s);
+    c->charOffset = charOffset;
+    c->rect.x = s->w * c->charOffset;
+    c->rect.y = 0;
+    c->rect.w = s->w;
 }
 
 
@@ -181,7 +198,7 @@ void KSDL_moveCursor(KSDL_Cursor* c, int dx, int dy){
     c->col = c->pos - c->lineStart;
 
     //Update cursor position on screen
-    c->rect.x = c->col * c->rect.w - (c->rect.w)*0.5;
+    c->rect.x = c->col * c->rect.w - (c->rect.w)*c->charOffset;
     c->rect.y = c->line * c->rect.h;
 }
 

@@ -26,3 +26,6 @@ run: build/gisp-editor2
 
 test: build/gisp-editor2
 	./build/gisp-editor2 test.txt
+
+testtracing: build/gisp-editor2
+	./build/gisp-editor2 test_tracing.gisp

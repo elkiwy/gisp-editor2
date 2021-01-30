@@ -6,6 +6,7 @@
 //Include standard libraries
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
 //Include other soruce files
 #include "KSDL_Text.h"
@@ -13,8 +14,8 @@
 #include "KSDL_Image.h"
 
 //Define constants
-#define WINDOW_W 1920*0.85
-#define WINDOW_H 1080*0.85
+#define WINDOW_W 1920*0.5
+#define WINDOW_H 1080*0.5
 #define BUFFER_SIZE 1024*10
 
 //Declare global variables
@@ -28,7 +29,7 @@ KSDL_Text* textArea;
 char textBuffer[BUFFER_SIZE];
 typedef enum {INPUT_SIMPLE, INPUT_VIM} InputMode;
 InputMode inputMode = INPUT_VIM;
-typedef enum {VIM_NORMAL, VIM_INSERT} VimMode;
+typedef enum {VIM_NORMAL, VIM_INSERT, VIM_REPLACE} VimMode;
 typedef enum {VIM_NONE, VIM_CHANGE, VIM_DELETE} VimSubMode;
 VimMode vimMode = VIM_NORMAL;
 VimSubMode vimSubMode = VIM_NONE;
@@ -298,25 +299,36 @@ void writeBufferToFile(char* path, char* buffer){
     dLog("File written!");
 }
 
+
+
+void* runGispOnBuffer(void* data){
+    char* path = (char*)data;
+    //Compose command
+    char cmd[1024];
+    sprintf(cmd, "gisp %s", path);
+
+    ////Execute it
+    FILE* f = popen(cmd, "r");
+    consolePanel->text[0] = '\0';
+
+    ////Read all the output
+    char line[1024*10];
+    while(fgets(line, 1024, f)){
+        strcat(consolePanel->text, line);
+        printf("process: ");printf(line);fflush(stdout);
+    }
+    pclose(f);
+    return NULL;
+}
+
+
+
 void saveAndRunOnBuffer(char* path, char* buffer){
     //Save the file
     writeBufferToFile(path, buffer);
 
-    //Run it
-    char cmd[1024];
-    sprintf(cmd, "gisp %s", path);
-    system(cmd);
-
-    //Save output
-    char line[1024*10];
-    FILE* f = popen(cmd, "r");
-    consolePanel->text[0] = '\0';
-    while(fgets(line, 1024, f)){
-        strcat(consolePanel->text, line);
-    }
-    pclose(f);
-    KSDL_updateText(consolePanel);
-    KSDL_updateImage(outputPreview);
+    pthread_t thread;
+    pthread_create(&thread, NULL, runGispOnBuffer, (void*)path);
 }
 
 
@@ -351,12 +363,15 @@ int jumpWord(int dir){
 }
 
 
+void vim_i();
 void motionTo(int pos){
     if (vimSubMode == VIM_NONE){
         moveCursorAbsolute(pos);
 
     }else if (vimSubMode == VIM_CHANGE){
-
+        deleteCharsFromTo(cursor->pos, pos);
+        moveCursorAbsolute(cursor->pos);
+        vim_i();
 
     }else if (vimSubMode == VIM_DELETE){
         deleteCharsFromTo(cursor->pos, pos);
@@ -369,25 +384,36 @@ void motionTo(int pos){
 
 
 
-void vim_escape(){
-    vimMode = VIM_NORMAL;
-    vimSubMode = VIM_NONE;
-    KSDL_changeCursor(cursor, '_', 0);
-}
+void vim_escape(){vimMode = VIM_NORMAL; vimSubMode = VIM_NONE; KSDL_changeCursor(cursor, '_', 0);}
 
-
-void vim_i(){
-    vimMode = VIM_INSERT;
-    KSDL_changeCursor(cursor, '|', -0.5);
-}
-
-
-
+//Submodes
 void vim_c(){vimSubMode = VIM_CHANGE;}
 void vim_d(){vimSubMode = VIM_DELETE;}
+void vim_r(){vimMode = VIM_REPLACE;}
 
+//Movements
+void vim_0(){moveCursorAbsolute(KSDL_getLineStart(cursor));}
+void vim_$(){moveCursorAbsolute(KSDL_getLineEnd(cursor));}
 void vim_w(){motionTo(jumpWord(1));}
 void vim_b(){motionTo(jumpWord(-1));}
+
+//Insert mode
+void vim_i(){vimMode = VIM_INSERT; KSDL_changeCursor(cursor, '|', -0.5);}
+void vim_a(){moveCursor(1, 0, 0); vimMode = VIM_INSERT; KSDL_changeCursor(cursor, '|', -0.5);}
+void vim_I(){vim_0(); vim_i();}
+void vim_A(){vim_$(); vim_a();}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -454,7 +480,7 @@ int main(int argc, char** argv) {
     consolePanel->backgroundColor.a = 0xff;
 
     //Output preview
-    char outputPath[1024] = "output.png";
+    char outputPath[1024] = "output_raytracer_gisp.png";
     outputPreview = KSDL_initImage(gRenderer, outputPath, (WINDOW_W-previewPanelWidth)*dpiScale, 0, previewPanelWidth*dpiScale, WINDOW_H);
     outputPreview->backgroundColor.r = 0x10;
     outputPreview->backgroundColor.g = 0x10;
@@ -475,7 +501,9 @@ int main(int argc, char** argv) {
     SDL_StartTextInput();
     SDL_Event event;
     int quit = 0;
+    int inputProcessed = 0;
     while (!quit) {
+        inputProcessed = 0;
         while (SDL_PollEvent(&event) == 1) {
             switch(event.type){
                 //Quit event
@@ -485,15 +513,30 @@ int main(int argc, char** argv) {
 
                 //TextInput event
                 case SDL_TEXTINPUT:
-                    if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
-                        //viminsert/basic input
-                        updateTextAreaWithChar(event.text.text[0]);
+                    if (inputProcessed == 0) {
+                        printf("textinput: %c\n", event.text.text[0]);
+                        dLogInt("VIM_MODE", vimMode);
+                        dLogInt("VIM_SUBMODE", vimSubMode);
+                        if(inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
+                            //viminsert/basic input
+                            updateTextAreaWithChar(event.text.text[0]);
+                        }else if (vimMode == VIM_REPLACE){
+                            deleteAfterCursor();
+                            updateTextAreaWithChar(event.text.text[0]);
+                            moveCursor(-1, 0, 0);
+                            vimMode = VIM_NORMAL;
+                        }
                     }
                     break;
 
                 //Other special Keydown event not intercepted by textInput
                 case SDL_KEYDOWN:
+                    if (vimMode == VIM_REPLACE){break;}
 
+                    inputProcessed = 1;
+                    printf("Keydown: %s\n", (char *)SDL_GetKeyName(event.key.keysym.sym));
+                    dLogInt("VIM_MODE", vimMode);
+                    dLogInt("VIM_SUBMODE", vimSubMode);
                     if (event.key.keysym.mod & KMOD_GUI){
                         switch(event.key.keysym.sym){
                             case SDLK_s: writeBufferToFile(path, textBuffer); break;
@@ -512,11 +555,12 @@ int main(int argc, char** argv) {
                                 case SDLK_RIGHT:   moveCursor( 1,  0, 1); break;
                                 case SDLK_UP:      moveCursor( 0, -1, 1); break;
                                 case SDLK_DOWN:    moveCursor( 0,  1, 1); break;
+                                default: inputProcessed = 0;
                             }
                         }else{
                             //No modifiers
                             switch(event.key.keysym.sym){
-                                case SDLK_ESCAPE:    quit = 1; break;
+                                case SDLK_ESCAPE:    vim_escape(); break;
                                 case SDLK_BACKSPACE: deleteBeforeCursor(); break;
                                 case SDLK_DELETE:    deleteAfterCursor(); break;
                                 case SDLK_RETURN:    updateTextAreaWithChar('\n'); break;
@@ -524,27 +568,49 @@ int main(int argc, char** argv) {
                                 case SDLK_RIGHT:     moveCursor( 1,  0, 0); break;
                                 case SDLK_UP:        moveCursor( 0, -1, 0); break;
                                 case SDLK_DOWN:      moveCursor( 0,  1, 0); break;
-                                default: dLog("Key not recognized in simple/viminput mode:");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
+                                default: dLog("Key not recognized in simple/viminput mode:");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));inputProcessed = 0;
                             }
                         }
 
                     }else if (inputMode == INPUT_VIM && vimMode == VIM_NORMAL){
                         //Vim bindings
-                        dLog("SDL_KEYDOWN:");
-                        switch(event.key.keysym.sym){
-                            case SDLK_ESCAPE:    vim_escape(); break;
-                            case SDLK_i:  vim_i(); break;
-                            case SDLK_w:  vim_w(); break;
-                            case SDLK_b:  vim_b(); break;
+                        if (event.key.keysym.mod & KMOD_SHIFT){
+                            switch(event.key.keysym.sym){
+                                //Inserts
+                                case SDLK_i:  vim_I(); break;
+                                case SDLK_a:  vim_A(); break;
 
-                            case SDLK_c:  vim_c(); break;
-                            case SDLK_d:  vim_d(); break;
+                                //Movements
+                                case SDLK_4:  vim_$(); break;
+                            }
+                        }else{
+                            switch(event.key.keysym.sym){
+                                case SDLK_ESCAPE: vim_escape(); break;
+                                case SDLK_r:      vim_r(); break;
 
-                            case SDLK_h:  moveCursor(-1, 0, 0); break;
-                            case SDLK_j:  moveCursor( 0, 1, 0); break;
-                            case SDLK_k:  moveCursor( 0,-1, 0); break;
-                            case SDLK_l:  moveCursor( 1, 0, 0); break;
-                            default: dLog("Key not recognized in vim mode (special key):");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));
+                                //Inserts
+                                case SDLK_i:  vim_i(); break;
+                                case SDLK_a:  vim_a(); break;
+
+                                //Movements
+                                case SDLK_w:  vim_w(); break;
+                                case SDLK_b:  vim_b(); break;
+                                case SDLK_0:  vim_0(); break;
+                                case SDLK_h:  moveCursor(-1, 0, 0); break;
+                                case SDLK_j:  moveCursor( 0, 1, 0); break;
+                                case SDLK_k:  moveCursor( 0,-1, 0); break;
+                                case SDLK_l:  moveCursor( 1, 0, 0); break;
+
+                                //Submodes switch
+                                case SDLK_c:  vim_c(); break;
+                                case SDLK_d:  vim_d(); break;
+
+
+                                case SDLK_u: undo(); break;
+
+
+                                default: dLog("Key not recognized in vim mode (special key):");dLog((char *)SDL_GetKeyName(event.key.keysym.sym));inputProcessed = 0;
+                            }
                         }
                     }
 
@@ -562,6 +628,7 @@ int main(int argc, char** argv) {
         KSDL_drawCursor(cursor, textArea->scrollX, textArea->scrollY);
 
         //Render console
+        KSDL_updateText(consolePanel);
         KSDL_drawText(consolePanel);
 
         //Render preview

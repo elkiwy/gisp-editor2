@@ -82,43 +82,6 @@ KSDL_Cursor* KSDL_initCursor(SDL_Renderer* r, char* buffer, unsigned int len, TT
     return c;
 }
 
-void KSDL_changeCursor(KSDL_Cursor* c, char symbol, float charOffset){
-    SDL_Color color = {0xff,0xff,0xff,0xff};
-    char symbolStr[2]; symbolStr[0] = symbol; symbolStr[1] = '\0';
-    SDL_Surface* s = TTF_RenderText_Blended(c->font, symbolStr, color);
-    c->texture = SDL_CreateTextureFromSurface(c->renderer, s);
-    c->charOffset = charOffset;
-    c->rect.x = s->w * c->charOffset;
-    c->rect.y = 0;
-    c->rect.w = s->w;
-}
-
-
-
-
-///Deinitialize cursor
-void KSDL_freeCursor(KSDL_Cursor* c){
-    free(c->lineText);
-    free(c);
-}
-
-
-
-void positionToLineAndColumn(char* buffer, int pos, int* line, int* col){
-    int l = 0; int c = 0; int i = 0;
-    while(i < pos){
-        if (buffer[i]=='\n'){
-            c = 0;
-            l++;
-        }else{
-            c++;
-        }
-        i++;
-    }
-    *line = l; *col = c;
-}
-
-
 ///Updates the current line information of the cursor
 void KSDL_updateCurrentLine(KSDL_Cursor* c){
     //Cycle the buffer for data
@@ -201,6 +164,72 @@ void KSDL_moveCursor(KSDL_Cursor* c, int dx, int dy){
     c->rect.x = c->col * c->rect.w - (c->rect.w)*c->charOffset;
     c->rect.y = c->line * c->rect.h;
 }
+
+
+void KSDL_changeCursor(KSDL_Cursor* c, char symbol, float charOffset){
+    SDL_Color color = {0xff,0xff,0xff,0xff};
+    char symbolStr[2]; symbolStr[0] = symbol; symbolStr[1] = '\0';
+    SDL_Surface* s = TTF_RenderText_Blended(c->font, symbolStr, color);
+    c->texture = SDL_CreateTextureFromSurface(c->renderer, s);
+    c->charOffset = -charOffset;
+    c->rect.x = s->w * c->charOffset;
+    c->rect.y = 0;
+    c->rect.w = s->w;
+    KSDL_moveCursor(c, 0, 0);
+}
+
+
+
+
+///Deinitialize cursor
+void KSDL_freeCursor(KSDL_Cursor* c){
+    free(c->lineText);
+    free(c);
+}
+
+
+
+void positionToLineAndColumn(char* buffer, int pos, int* line, int* col){
+    int l = 0; int c = 0; int i = 0;
+    while(i < pos){
+        if (buffer[i]=='\n'){
+            c = 0;
+            l++;
+        }else{
+            c++;
+        }
+        i++;
+    }
+    *line = l; *col = c;
+}
+
+
+int KSDL_getLineStart(KSDL_Cursor* c){
+    int i = c->pos;
+    while(i > 0){
+        char chr = c->buffer[i];
+        if (chr == '\n'){
+            return i+1;
+        }
+        i--;
+    }
+    return 0;
+}
+
+int KSDL_getLineEnd(KSDL_Cursor* c){
+    int i = c->pos;
+    while(i < c->bufferLen-1){
+        char chr = c->buffer[i];
+        if (chr == '\n'){
+            return i-1;
+        }
+        i++;
+    }
+    return c->bufferLen-1;
+}
+
+
+
 
 
 

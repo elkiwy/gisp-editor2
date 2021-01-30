@@ -9,3 +9,7 @@ obj/
 build/
 
 include/
+
+
+*.png
+*.svg

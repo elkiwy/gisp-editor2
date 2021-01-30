@@ -44,9 +44,9 @@ KSDL_Cursor* cursor;
 
 //Utilities
 KSDL_Text* debugText;
-void dLog(char* t){printf("\n%s", t);fflush(stdout);}
-void dLogInt(char* s, int n){printf("\n%s: %d", s, n);fflush(stdout);}
-void dLogPtr(void* p){printf("\n%p", p);fflush(stdout);}
+void dLog(char* t){printf("%s\n", t);fflush(stdout);}
+void dLogInt(char* s, int n){printf("%s: %d\n", s, n);fflush(stdout);}
+void dLogPtr(void* p){printf("%p\n", p);fflush(stdout);}
 
 
 

@@ -12,7 +12,7 @@ KSDL_Text* KSDL_initText(SDL_Renderer* r, char* text, int x, int y, int w, int h
     t->fgColor.r = 0xff; t->fgColor.g = 0xff; t->fgColor.b = 0xff; t->fgColor.a = 0xff;
 
     //Setup rect
-    t->rect.x = x; t->rect.y = y; t->rect.w = 0; t->rect.h = 0;
+    t->rect.x = x; t->rect.y = y; t->rect.w = w; t->rect.h = h;
     t->maxWidth = w; t->maxHeight = h;
     t->scrollX = 0;
     t->scrollY = 0;
@@ -42,8 +42,8 @@ void KSDL_updateText(KSDL_Text* t){
     SDL_Surface* surface = TTF_RenderText_Blended_Wrapped(t->font, t->text, t->fgColor, t->maxWidth);
     if (strlen(t->text) == 0){surface = TTF_RenderText_Blended_Wrapped(t->font, " ", t->fgColor, t->maxWidth);}
     t->texture = SDL_CreateTextureFromSurface(t->renderer, surface);
-    t->rect.w = surface->w;
-    t->rect.h = surface->h;
+    t->texture_w = surface->w;
+    t->texture_h = surface->h;
     SDL_FreeSurface(surface);
 }
 
@@ -67,7 +67,18 @@ void KSDL_drawText(KSDL_Text* t){
 
     //Draw the text
     if (t->texture != NULL){
-        SDL_Rect scrolledRect = {t->rect.x - t->scrollX, t->rect.y - t->scrollY, t->rect.w, t->rect.h};
-        SDL_RenderCopy(t->renderer, t->texture, NULL, &scrolledRect);
+        int tw = (t->rect.w < t->texture_w) ? t->rect.w : t->texture_w;
+        int th = (t->rect.h < t->texture_h) ? t->rect.h : t->texture_h;
+        SDL_Rect src = {
+            t->rect.x + t->scrollX,
+            t->rect.y + t->scrollY,
+            tw, th
+        };
+        SDL_Rect dest = {
+            t->rect.x,
+            t->rect.y,
+            tw, th
+        };
+        SDL_RenderCopy(t->renderer, t->texture, &src, &dest);
     }
 }

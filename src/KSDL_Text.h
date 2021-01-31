@@ -7,6 +7,8 @@
 typedef struct KSDL_Text{
     char* text;
     SDL_Texture* texture;
+    int texture_w;
+    int texture_h;
     SDL_Rect rect;
     SDL_Color fgColor;
     SDL_Color bgColor;

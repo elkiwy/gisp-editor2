@@ -203,8 +203,6 @@ void updateTextAreaWithChar(char c){
 
 
 
-int safeAreaTop = WINDOW_H*0.1;
-int safeAreaBot = WINDOW_H*0.6;
 void moveCursor(int dx, int dy, int shiftDown){
     //Handle selection
     if (shiftDown && cursor->selectionStart == -1){
@@ -215,20 +213,22 @@ void moveCursor(int dx, int dy, int shiftDown){
 
     //Update cursor position
     KSDL_moveCursor(cursor, dx, dy);
-
-    //Update scroll position
     int lineHeight = cursor->rect.h;
     int cursorPos = cursor->line * lineHeight;
-    int thresholdLow = textArea->scrollY + safeAreaBot;
-    int thresholdHigh = textArea->scrollY + safeAreaTop;
+
+    //Set margins
+    int safeAreaTop = 0;
+    int safeAreaBot = textArea->backgroundRect.h - lineHeight;
 
     //Scroll up if needed
+    int thresholdHigh = textArea->scrollY + safeAreaTop;
     while(cursorPos < thresholdHigh){
         textArea->scrollY -= lineHeight;
         thresholdHigh = textArea->scrollY + safeAreaTop;
     }
 
     //Scroll down if needed
+    int thresholdLow = textArea->scrollY + safeAreaBot;
     while(cursorPos > thresholdLow){
         textArea->scrollY += lineHeight;
         thresholdLow = textArea->scrollY + safeAreaBot;

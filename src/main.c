@@ -301,21 +301,34 @@ void writeBufferToFile(char* path, char* buffer){
 
 
 
+///Function called always on a background thread to not block the main one with the rendering
 void* runGispOnBuffer(void* data){
     char* path = (char*)data;
     //Compose command
     char cmd[1024];
     sprintf(cmd, "gisp %s", path);
 
-    ////Execute it
+    //Execute it
     FILE* f = popen(cmd, "r");
     consolePanel->text[0] = '\0';
 
-    ////Read all the output
+
+
+    //Read all the output
     char line[1024*10];
     while(fgets(line, 1024, f)){
         strcat(consolePanel->text, line);
-        printf("process: ");printf(line);fflush(stdout);
+
+
+        int lineHeight = cursor->rect.h;
+        int lineCount = KSDL_lineCount(consolePanel);
+        int maxLines = (consolePanel->backgroundRect.h/lineHeight) - 1;
+        if (lineCount > maxLines){
+            consolePanel->scrollY += lineHeight;
+        }
+
+        printf("a: %d, b: %d, c: %d\n", lineCount, maxLines, consolePanel->scrollY);
+
     }
     pclose(f);
     return NULL;

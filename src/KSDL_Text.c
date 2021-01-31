@@ -70,8 +70,8 @@ void KSDL_drawText(KSDL_Text* t){
         int tw = (t->rect.w < t->texture_w) ? t->rect.w : t->texture_w;
         int th = (t->rect.h < t->texture_h) ? t->rect.h : t->texture_h;
         SDL_Rect src = {
-            t->rect.x + t->scrollX,
-            t->rect.y + t->scrollY,
+            t->scrollX,
+            t->scrollY,
             tw, th
         };
         SDL_Rect dest = {
@@ -81,4 +81,15 @@ void KSDL_drawText(KSDL_Text* t){
         };
         SDL_RenderCopy(t->renderer, t->texture, &src, &dest);
     }
+}
+
+
+int KSDL_lineCount(KSDL_Text* t){
+    int c=0;
+    for (int i=0;i<strlen(t->text); ++i){
+        if (t->text[i] == '\n'){
+            c++;
+        }
+    }
+    return c;
 }

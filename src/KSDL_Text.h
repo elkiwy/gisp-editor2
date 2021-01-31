@@ -29,5 +29,6 @@ void KSDL_updateText(KSDL_Text* t);
 void KSDL_freeText(KSDL_Text* t);
 void KSDL_drawText(KSDL_Text* t);
 
+int KSDL_lineCount(KSDL_Text* t);
 
 #endif // __KSDL_TEXT_H_

@@ -22,7 +22,12 @@ typedef struct KSDL_Text{
 
     SDL_Rect backgroundRect;
     SDL_Color backgroundColor;
+
+    SDL_Rect padding;
+    int borderWidth;
+    SDL_Color borderColor;
 }KSDL_Text;
+
 
 KSDL_Text* KSDL_initText(SDL_Renderer* r, char* text, int x, int y, int w, int h, TTF_Font* f);
 void KSDL_updateText(KSDL_Text* t);
@@ -30,5 +35,7 @@ void KSDL_freeText(KSDL_Text* t);
 void KSDL_drawText(KSDL_Text* t);
 
 int KSDL_lineCount(KSDL_Text* t);
+void KSDL_setPadding(KSDL_Text* t, int left, int top, int right, int bottom);
+void KSDL_setBorder(KSDL_Text* t, int width, int r, int g, int b, int a);
 
 #endif // __KSDL_TEXT_H_

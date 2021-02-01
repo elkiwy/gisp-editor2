@@ -485,24 +485,24 @@ int main(int argc, char** argv) {
     int consoleBufferHeight = WINDOW_H*0.3;
 
     //Console
-    char consoleBuffer[1024*10] = "Ciccipuzzoli";
+    char consoleBuffer[1024*10] = "Press CMD+r to run the program.";
     consolePanel = KSDL_initText(gRenderer, consoleBuffer, 0, (WINDOW_H-consoleBufferHeight)*dpiScale, (WINDOW_W-previewPanelWidth)*dpiScale, consoleBufferHeight*dpiScale, gFont);
-    consolePanel->backgroundColor.r = 0x20;
-    consolePanel->backgroundColor.g = 0x20;
-    consolePanel->backgroundColor.b = 0x20;
+    consolePanel->backgroundColor.r = 0x00;
+    consolePanel->backgroundColor.g = 0x00;
+    consolePanel->backgroundColor.b = 0x00;
     consolePanel->backgroundColor.a = 0xff;
+    KSDL_setPadding(consolePanel, 16, 16, 0, 0);
+    KSDL_setBorder(consolePanel, 2, 20, 20, 20, 255);
 
     //Output preview
     char outputPath[1024] = "output_raytracer_gisp.png";
     outputPreview = KSDL_initImage(gRenderer, outputPath, (WINDOW_W-previewPanelWidth)*dpiScale, 0, previewPanelWidth*dpiScale, WINDOW_H);
-    outputPreview->backgroundColor.r = 0x10;
-    outputPreview->backgroundColor.g = 0x10;
-    outputPreview->backgroundColor.b = 0x10;
-    outputPreview->backgroundColor.a = 0xff;
 
     //Initialize text area
     textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, (WINDOW_W-previewPanelWidth)*dpiScale, (WINDOW_H-consoleBufferHeight)*dpiScale, gFont);
     KSDL_updateText(textArea);
+    KSDL_setPadding(textArea, 16, 16, 0, 0);
+    KSDL_setBorder(textArea, 2, 20, 20, 20, 255);
 
     //Initialize cursor
     cursor = KSDL_initCursor(gRenderer, textBuffer, BUFFER_SIZE, gFont);
@@ -638,7 +638,7 @@ int main(int argc, char** argv) {
 
         //Render text area
         KSDL_drawText(textArea);
-        KSDL_drawCursor(cursor, textArea->scrollX, textArea->scrollY);
+        KSDL_drawCursor(cursor, textArea);
 
         //Render console
         KSDL_updateText(consolePanel);

@@ -29,8 +29,40 @@ KSDL_Text* KSDL_initText(SDL_Renderer* r, char* text, int x, int y, int w, int h
 
     KSDL_updateText(t);
 
+
+    t->padding.x = 0;
+    t->padding.y = 0;
+    t->padding.w = 0;
+    t->padding.h = 0;
+
+
+    t->borderColor.r = 0;
+    t->borderColor.g = 0;
+    t->borderColor.b = 0;
+    t->borderColor.a = 0;
+    t->borderWidth = 0;
+
     return t;
 }
+
+
+
+void KSDL_setPadding(KSDL_Text* t, int left, int top, int right, int bottom){
+    t->padding.x = left;
+    t->padding.y = top;
+    t->padding.w = right;
+    t->padding.h = bottom;
+}
+
+
+void KSDL_setBorder(KSDL_Text* t, int width, int r, int g, int b, int a){
+    t->borderColor.r = r;
+    t->borderColor.g = g;
+    t->borderColor.b = b;
+    t->borderColor.a = a;
+    t->borderWidth = width;
+}
+
 
 
 
@@ -58,9 +90,20 @@ void KSDL_drawText(KSDL_Text* t){
     Uint8 prevR, prevG, prevB, prevA;
     SDL_GetRenderDrawColor(t->renderer, &prevR, &prevG, &prevB, &prevA);
 
+    if (t->borderWidth>0){
+        SDL_SetRenderDrawColor(t->renderer, t->borderColor.r, t->borderColor.g, t->borderColor.b, t->borderColor.a);
+        SDL_RenderFillRect(t->renderer, &(t->backgroundRect));
+    }
+
     //Draw the background
+    SDL_Rect rectWithoutBorders = {
+        t->backgroundRect.x+t->borderWidth,
+        t->backgroundRect.y+t->borderWidth,
+        t->backgroundRect.w-t->borderWidth*2,
+        t->backgroundRect.h-t->borderWidth*2
+    };
     SDL_SetRenderDrawColor(t->renderer, t->backgroundColor.r, t->backgroundColor.g, t->backgroundColor.b, t->backgroundColor.a);
-    SDL_RenderFillRect(t->renderer, &(t->backgroundRect));
+    SDL_RenderFillRect(t->renderer, &rectWithoutBorders);
 
     //Reset draw state
     SDL_SetRenderDrawColor(t->renderer, prevR, prevG, prevB, prevA);
@@ -75,8 +118,8 @@ void KSDL_drawText(KSDL_Text* t){
             tw, th
         };
         SDL_Rect dest = {
-            t->rect.x,
-            t->rect.y,
+            t->rect.x + t->padding.x,
+            t->rect.y + t->padding.y,
             tw, th
         };
         SDL_RenderCopy(t->renderer, t->texture, &src, &dest);

@@ -5,6 +5,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "KSDL_Text.h"
+
+
+
 
 
 typedef struct KSDL_Cursor{
@@ -32,8 +36,6 @@ typedef struct KSDL_Cursor{
 
     //Selection
     int selectionStart;
-
-
 }KSDL_Cursor;
 
 
@@ -236,11 +238,14 @@ int KSDL_getLineEnd(KSDL_Cursor* c){
 
 
 
-void KSDL_drawCursor(KSDL_Cursor* c, int scrollX, int scrollY){
-    SDL_Rect scrolledRect = {c->rect.x - scrollX, c->rect.y - scrollY, c->rect.w, c->rect.h};
+void KSDL_drawCursor(KSDL_Cursor* c, KSDL_Text* t){
+    SDL_Rect scrolledRect = {
+        c->rect.x - t->scrollX + t->padding.x,
+        c->rect.y - t->scrollY + t->padding.y,
+        c->rect.w,
+        c->rect.h
+    };
     SDL_RenderCopy(c->renderer, c->texture, NULL, &scrolledRect);
-
-
 
     if (c->selectionStart != -1){
         /* setup */
@@ -291,7 +296,12 @@ void KSDL_drawCursor(KSDL_Cursor* c, int scrollX, int scrollY){
             SDL_Surface* surface = TTF_RenderText_Shaded(c->font, tmpLine, fg, bg);
             if (surface==NULL){continue;}
             SDL_Texture* texture = SDL_CreateTextureFromSurface(c->renderer, surface);
-            SDL_Rect r = {tmp_x - scrollX, tmp_y - scrollY, surface->w, surface->h};
+            SDL_Rect r = {
+                tmp_x - t->scrollX + t->padding.x,
+                tmp_y - t->scrollY + t->padding.y,
+                surface->w,
+                surface->h
+            };
             SDL_RenderCopy(c->renderer, texture, NULL, &r);
             SDL_FreeSurface(surface);
             SDL_DestroyTexture(texture);

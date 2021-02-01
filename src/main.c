@@ -329,6 +329,7 @@ void* runGispOnBuffer(void* data){
 
     }
     pclose(f);
+    KSDL_updateImage(outputPreview);
     return NULL;
 }
 

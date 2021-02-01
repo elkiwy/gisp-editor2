@@ -543,6 +543,7 @@ int main(int argc, char** argv) {
 
                 //Other special Keydown event not intercepted by textInput
                 case SDL_KEYDOWN:
+                    if (event.key.keysym.sym == SDLK_ESCAPE){vim_escape(); break;}
                     if (vimMode == VIM_REPLACE){break;}
 
                     inputProcessed = 1;

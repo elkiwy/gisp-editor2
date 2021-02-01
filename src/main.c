@@ -313,14 +313,14 @@ void* runGispOnBuffer(void* data){
     consolePanel->text[0] = '\0';
 
     //Read all the output
+    int lineHeight = cursor->rect.h;
     char line[1024*10];
     consolePanel->scrollY = 0;
     while(fgets(line, 1024, f)){
         strcat(consolePanel->text, line);
 
-        int lineHeight = cursor->rect.h;
         int lineCount = KSDL_lineCount(consolePanel);
-        int maxLines = (consolePanel->backgroundRect.h/lineHeight) - 1;
+        int maxLines = (consolePanel->backgroundRect.h/lineHeight)-1;
         if (lineCount > maxLines){
             consolePanel->scrollY += lineHeight;
         }
@@ -490,7 +490,7 @@ int main(int argc, char** argv) {
     consolePanel->backgroundColor.g = 0x00;
     consolePanel->backgroundColor.b = 0x00;
     consolePanel->backgroundColor.a = 0xff;
-    KSDL_setPadding(consolePanel, 16, 16, 0, 0);
+    KSDL_setPadding(consolePanel, 16, 16, 16, 16);
     KSDL_setBorder(consolePanel, 2, 20, 20, 20, 255);
 
     //Output preview

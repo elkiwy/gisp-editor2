@@ -115,12 +115,14 @@ void KSDL_drawText(KSDL_Text* t){
         SDL_Rect src = {
             t->scrollX,
             t->scrollY,
-            tw, th
+            tw - t->padding.x - t->padding.w,
+            th - t->padding.y - t->padding.h
         };
         SDL_Rect dest = {
             t->rect.x + t->padding.x,
             t->rect.y + t->padding.y,
-            tw, th
+            tw - t->padding.x - t->padding.w,
+            th - t->padding.y - t->padding.h
         };
         SDL_RenderCopy(t->renderer, t->texture, &src, &dest);
     }

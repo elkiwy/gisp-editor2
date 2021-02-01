@@ -219,7 +219,7 @@ int KSDL_getLineStart(KSDL_Cursor* c){
 }
 
 int KSDL_getLineEnd(KSDL_Cursor* c){
-    int i = c->pos;
+    unsigned int i = c->pos;
     while(i < c->bufferLen-1){
         char chr = c->buffer[i];
         if (chr == '\n'){

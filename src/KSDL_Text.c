@@ -129,7 +129,7 @@ void KSDL_drawText(KSDL_Text* t){
 
 int KSDL_lineCount(KSDL_Text* t){
     int c=0;
-    for (int i=0;i<strlen(t->text); ++i){
+    for (unsigned long i=0;i<strlen(t->text); ++i){
         if (t->text[i] == '\n'){
             c++;
         }

@@ -527,8 +527,6 @@ int main(int argc, char** argv) {
                 case SDL_TEXTINPUT:
                     if (inputProcessed == 0) {
                         printf("textinput: %c\n", event.text.text[0]);
-                        dLogInt("VIM_MODE", vimMode);
-                        dLogInt("VIM_SUBMODE", vimSubMode);
                         if(inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
                             //viminsert/basic input
                             updateTextAreaWithChar(event.text.text[0]);
@@ -548,17 +546,13 @@ int main(int argc, char** argv) {
 
                     inputProcessed = 1;
                     printf("Keydown: %s\n", (char *)SDL_GetKeyName(event.key.keysym.sym));
-                    dLogInt("VIM_MODE", vimMode);
-                    dLogInt("VIM_SUBMODE", vimSubMode);
                     if (event.key.keysym.mod & KMOD_GUI){
                         switch(event.key.keysym.sym){
                             case SDLK_s: writeBufferToFile(path, textBuffer); break;
                             case SDLK_r: saveAndRunOnBuffer(path, textBuffer); break;
                             case SDLK_z: undo(); break;
                         }
-                    }
-
-                    if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
+                    }else if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
                         //Normal basic input are handled in SDL_TEXTINPUT above,
                         //Here handles normal movements and special keys
                         if (event.key.keysym.mod & KMOD_SHIFT){

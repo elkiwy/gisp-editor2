@@ -218,7 +218,7 @@ void moveCursor(int dx, int dy, int shiftDown){
 
     //Set margins
     int safeAreaTop = 0;
-    int safeAreaBot = textArea->backgroundRect.h - lineHeight;
+    int safeAreaBot = textArea->rect.h - textArea->padding.h - textArea->padding.y - lineHeight;
 
     //Scroll up if needed
     int thresholdHigh = textArea->scrollY + safeAreaTop;
@@ -500,7 +500,7 @@ int main(int argc, char** argv) {
     //Initialize text area
     textArea = KSDL_initText(gRenderer, &textBuffer[0], 0, 0, (WINDOW_W-previewPanelWidth)*dpiScale, (WINDOW_H-consoleBufferHeight)*dpiScale, gFont);
     KSDL_updateText(textArea);
-    KSDL_setPadding(textArea, 16, 16, 0, 0);
+    KSDL_setPadding(textArea, 16, 16, 16, 16);
     KSDL_setBorder(textArea, 2, 20, 20, 20, 255);
 
     //Initialize cursor

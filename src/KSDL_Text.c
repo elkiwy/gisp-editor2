@@ -110,19 +110,20 @@ void KSDL_drawText(KSDL_Text* t){
 
     //Draw the text
     if (t->texture != NULL){
-        int tw = (t->rect.w < t->texture_w) ? t->rect.w : t->texture_w;
-        int th = (t->rect.h < t->texture_h) ? t->rect.h : t->texture_h;
+        int tw = t->rect.w - t->padding.x - t->padding.w;
+        int th = t->rect.h - t->padding.y - t->padding.h;
+        if(t->rect.w > t->texture_w) {tw = t->texture_w;}
+        if(t->rect.h > t->texture_h) {th = t->texture_h;}
+
         SDL_Rect src = {
             t->scrollX,
             t->scrollY,
-            tw - t->padding.x - t->padding.w,
-            th - t->padding.y - t->padding.h
+            tw, th
         };
         SDL_Rect dest = {
             t->rect.x + t->padding.x,
             t->rect.y + t->padding.y,
-            tw - t->padding.x - t->padding.w,
-            th - t->padding.y - t->padding.h
+            tw, th
         };
         SDL_RenderCopy(t->renderer, t->texture, &src, &dest);
     }

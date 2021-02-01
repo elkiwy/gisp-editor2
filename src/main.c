@@ -312,13 +312,11 @@ void* runGispOnBuffer(void* data){
     FILE* f = popen(cmd, "r");
     consolePanel->text[0] = '\0';
 
-
-
     //Read all the output
     char line[1024*10];
+    consolePanel->scrollY = 0;
     while(fgets(line, 1024, f)){
         strcat(consolePanel->text, line);
-
 
         int lineHeight = cursor->rect.h;
         int lineCount = KSDL_lineCount(consolePanel);

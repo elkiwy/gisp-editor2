@@ -29,7 +29,7 @@ KSDL_Text* textArea;
 char textBuffer[BUFFER_SIZE];
 typedef enum {INPUT_SIMPLE, INPUT_VIM} InputMode;
 InputMode inputMode = INPUT_VIM;
-typedef enum {VIM_NORMAL, VIM_INSERT, VIM_REPLACE} VimMode;
+typedef enum {VIM_NORMAL, VIM_INSERT, VIM_REPLACE, VIM_FIND, VIM_UNTIL} VimMode;
 typedef enum {SUBVIM_NONE, SUBVIM_CHANGE, SUBVIM_DELETE} VimSubMode;
 VimMode vimMode = VIM_NORMAL;
 VimSubMode vimSubMode = SUBVIM_NONE;
@@ -374,6 +374,19 @@ int jumpWord(int dir){
     return nextWordPos;
 }
 
+///Return the position (absolute) of the next characters after the cursor
+int findChar(char c, int dir){
+    int bufferLength = strlen(textBuffer);
+    int tmpPos = cursor->pos;
+    char currentChar, previousChar;
+    while(1){
+        if (tmpPos >= bufferLength || textBuffer[tmpPos]=='\n'){return cursor->pos;}
+        if (textBuffer[tmpPos]==c){return tmpPos;}
+        tmpPos += dir;
+    }
+}
+
+
 
 void vim_i();
 void motionTo(int pos){
@@ -386,6 +399,7 @@ void motionTo(int pos){
         vim_i();
 
     }else if (vimSubMode == SUBVIM_DELETE){
+        if (vimMode == VIM_FIND || vimMode == VIM_UNTIL){pos++;} //Ugly but it should be right
         deleteCharsFromTo(cursor->pos, pos);
         moveCursorAbsolute(cursor->pos);
     }
@@ -408,6 +422,8 @@ void vim_0(){moveCursorAbsolute(KSDL_getLineStart(cursor));}
 void vim_$(){moveCursorAbsolute(KSDL_getLineEnd(cursor));}
 void vim_w(){motionTo(jumpWord(1));}
 void vim_b(){motionTo(jumpWord(-1));}
+void vim_f(){vimMode = VIM_FIND;}
+void vim_t(){vimMode = VIM_UNTIL;}
 
 //Insert mode
 void vim_i(){vimMode = VIM_INSERT; KSDL_changeCursor(cursor, '|', -0.5);}
@@ -527,13 +543,32 @@ int main(int argc, char** argv) {
                 case SDL_TEXTINPUT:
                     if (inputProcessed == 0) {
                         printf("textinput: %c\n", event.text.text[0]);
+                        /*
+                        ** Normal Key insert
+                        */
                         if(inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
                             //viminsert/basic input
                             updateTextAreaWithChar(event.text.text[0]);
+
+                        /*
+                        ** VIM REPLACE
+                        */
                         }else if (vimMode == VIM_REPLACE){
                             deleteAfterCursor();
                             updateTextAreaWithChar(event.text.text[0]);
                             moveCursor(-1, 0, 0);
+                            vimMode = VIM_NORMAL;
+                        /*
+                        ** VIM FIND
+                        */
+                        }else if (vimMode == VIM_FIND){
+                            motionTo(findChar(event.text.text[0], 1));
+                            vimMode = VIM_NORMAL;
+                        /*
+                        ** VIM UNTIL
+                        */
+                        }else if (vimMode == VIM_UNTIL){
+                            motionTo(findChar(event.text.text[0], 1)-1);
                             vimMode = VIM_NORMAL;
                         }
                     }
@@ -542,21 +577,32 @@ int main(int argc, char** argv) {
                 //Other special Keydown event not intercepted by textInput
                 case SDL_KEYDOWN:
                     if (event.key.keysym.sym == SDLK_ESCAPE){vim_escape(); break;}
-                    if (vimMode == VIM_REPLACE){break;}
+                    if (vimMode != VIM_NORMAL && vimMode != VIM_INSERT){break;}
 
                     inputProcessed = 1;
                     printf("Keydown: %s\n", (char *)SDL_GetKeyName(event.key.keysym.sym));
+
+                    /*
+                    **
+                    ** Shortcuts with CMD
+                    **
+                     */
                     if (event.key.keysym.mod & KMOD_GUI){
                         switch(event.key.keysym.sym){
                             case SDLK_s: writeBufferToFile(path, textBuffer); break;
                             case SDLK_r: saveAndRunOnBuffer(path, textBuffer); break;
                             case SDLK_z: undo(); break;
                         }
+                    /*
+                    **
+                    ** Keys pressed in INSERT mode
+                    **
+                     */
                     }else if (inputMode == INPUT_SIMPLE || (inputMode == INPUT_VIM && vimMode == VIM_INSERT)){
-                        //Normal basic input are handled in SDL_TEXTINPUT above,
-                        //Here handles normal movements and special keys
+                        /*
+                         * SHIFT Modififier
+                         **/
                         if (event.key.keysym.mod & KMOD_SHIFT){
-                            //Command modifiers
                             switch(event.key.keysym.sym){
                                 case SDLK_LEFT:    moveCursor(-1,  0, 1); break;
                                 case SDLK_RIGHT:   moveCursor( 1,  0, 1); break;
@@ -564,8 +610,10 @@ int main(int argc, char** argv) {
                                 case SDLK_DOWN:    moveCursor( 0,  1, 1); break;
                                 default: inputProcessed = 0;
                             }
+                        /*
+                         * NO Modififiers
+                         **/
                         }else{
-                            //No modifiers
                             switch(event.key.keysym.sym){
                                 case SDLK_ESCAPE:    vim_escape(); break;
                                 case SDLK_BACKSPACE: deleteBeforeCursor(); break;
@@ -579,8 +627,15 @@ int main(int argc, char** argv) {
                             }
                         }
 
+                    /*
+                    **
+                    ** Keys pressed in VIM NORMAL mode
+                    **
+                     */
                     }else if (inputMode == INPUT_VIM && vimMode == VIM_NORMAL){
-                        //Vim bindings
+                        /*
+                         * SHIFT Modififiers
+                         **/
                         if (event.key.keysym.mod & KMOD_SHIFT){
                             switch(event.key.keysym.sym){
                                 //Inserts
@@ -607,6 +662,8 @@ int main(int argc, char** argv) {
                                 case SDLK_j:  moveCursor( 0, 1, 0); break;
                                 case SDLK_k:  moveCursor( 0,-1, 0); break;
                                 case SDLK_l:  moveCursor( 1, 0, 0); break;
+                                case SDLK_f:  vim_f(); break;
+                                case SDLK_t:  vim_t(); break;
 
                                 //Submodes switch
                                 case SDLK_c:  vim_c(); break;

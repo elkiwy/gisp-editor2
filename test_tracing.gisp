@@ -1,6 +1,6 @@
-(def sw 256)
-(def sh 256)
-(def spp 64)
+(def sw 512)
+(def sh 512)
+(def spp 128)
 
 ;;Define scene
 (def scene  (make-group3D))
@@ -15,8 +15,8 @@
 (def lig (make-material-light 15 15 15))
 
 ;;Make cornel box
-(add-to-group3D scene (rect3D [  0   0   0] [  0 555 555] gre))
-(add-to-group3D scene (rect3D [555   0   0] [555 555 555] red))
+(add-to-group3D scene (rect3D [  0   0   0] [  0 555 555] whi))
+(add-to-group3D scene (rect3D [555   0   0] [555 555 555] whi))
 (def testlight (flip-face (rect3D [213 554 277] [343 554 332] lig)))
 (add-to-group3D  scene testlight)
 (add-to-group3D lights testlight)
@@ -27,7 +27,7 @@
 ;;Add objects
 ;;(add-to-group3D scene (rotated3D (box3D [0 0 0] [165 330 165] metal) 15 1))
 (add-to-group3D scene (translated3D (rotated3D (box3D [0 0 0] [165 330 165] metal) 15 1) [265 0 295]))
-(def testsphere (sphere3D [190 190 190] 90 glass))
+(def testsphere (sphere3D [190 90 190] 90 glass))
 (add-to-group3D scene testsphere)
 (add-to-group3D lights testsphere)
 
@@ -37,4 +37,3 @@
 
 
 nil
-

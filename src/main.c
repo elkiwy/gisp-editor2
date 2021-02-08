@@ -325,7 +325,7 @@ void* runGispOnBuffer(void* data){
             consolePanel->scrollY += lineHeight;
         }
 
-        printf("a: %d, b: %d, c: %d\n", lineCount, maxLines, consolePanel->scrollY);
+        //printf("a: %d, b: %d, c: %d\n", lineCount, maxLines, consolePanel->scrollY);
 
     }
     pclose(f);
@@ -361,6 +361,7 @@ void saveAndRunOnBuffer(char* path, char* buffer){
  *
  * */
 
+///Return the position (absolute) of the next word after the cursor
 int jumpWord(int dir){
     int bufferLength = strlen(textBuffer);
     int nextWordPos = cursor->pos;
@@ -389,6 +390,7 @@ int findChar(char c, int dir){
 
 
 void vim_i();
+void vim_$();
 void motionTo(int pos){
     if (vimSubMode == SUBVIM_NONE){
         moveCursorAbsolute(pos);
@@ -410,20 +412,107 @@ void motionTo(int pos){
 
 
 
-void vim_escape(){vimMode = VIM_NORMAL; vimSubMode = VIM_NONE; KSDL_changeCursor(cursor, '_', 0);}
+
+
+
+
+
+
+
+
+int isOpenBracket(char c){return (c=='(' || c=='[' || c=='{');}
+int isCloseBracket(char c){return (c==')' || c==']' || c=='}');}
+
+
+int findMatchingBracket(char c, int dir){
+    int buffLen = strlen(textBuffer);
+    int tmpPos = cursor->pos + dir;
+    int nestedLevel = 0;
+    while(1){
+        if (textBuffer[tmpPos] == c && nestedLevel == 0) {return tmpPos;}
+        if (isOpenBracket(textBuffer[tmpPos]))  {nestedLevel++;}
+        if (isCloseBracket(textBuffer[tmpPos])) {nestedLevel--;}
+        tmpPos += dir;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void vim_escape(){vimMode = VIM_NORMAL; vimSubMode = SUBVIM_NONE; KSDL_changeCursor(cursor, '_', 0);}
 
 //Submodes
-void vim_c(){vimSubMode = VIM_CHANGE;}
-void vim_d(){vimSubMode = VIM_DELETE;}
+void vim_c(){
+    if (vimSubMode == SUBVIM_CHANGE){
+        moveCursorAbsolute(KSDL_getLineStart(cursor));//Move withou motion yet
+        vim_$();
+        vim_i();
+    }else{
+        vimSubMode = SUBVIM_CHANGE;
+    }
+}
+void vim_C(){
+    vimSubMode = SUBVIM_CHANGE;
+    vim_$();
+}
+void vim_d(){
+    if (vimSubMode == SUBVIM_DELETE){
+        moveCursorAbsolute(KSDL_getLineStart(cursor));//Move withou motion yet
+        vim_$();
+        deleteAfterCursor();
+    }else{
+        vimSubMode = SUBVIM_DELETE;
+    }
+}
+void vim_D(){
+    vimSubMode = SUBVIM_DELETE;
+    vim_$();
+}
 void vim_r(){vimMode = VIM_REPLACE;}
 
 //Movements
-void vim_0(){moveCursorAbsolute(KSDL_getLineStart(cursor));}
-void vim_$(){moveCursorAbsolute(KSDL_getLineEnd(cursor));}
+void vim_0(){motionTo(KSDL_getLineStart(cursor));}
+void vim_$(){
+    int target = KSDL_getLineEnd(cursor);
+    if (vimSubMode == SUBVIM_DELETE || vimSubMode == SUBVIM_CHANGE){target++;}
+    motionTo(target);
+}
+
+
+void vim_percentage(){
+    char c = textBuffer[cursor->pos];
+    int target = cursor->pos;
+    if (c=='(') {target = findMatchingBracket(')', 1);}
+    if (c=='[') {target = findMatchingBracket(']', 1);}
+    if (c=='{') {target = findMatchingBracket('}', 1);}
+    if (c==')') {target = findMatchingBracket('(',-1);}
+    if (c==']') {target = findMatchingBracket('[',-1);}
+    if (c=='}') {target = findMatchingBracket('{',-1);}
+
+    motionTo(target);
+}
+
+
 void vim_w(){motionTo(jumpWord(1));}
 void vim_b(){motionTo(jumpWord(-1));}
 void vim_f(){vimMode = VIM_FIND;}
 void vim_t(){vimMode = VIM_UNTIL;}
+
+void vim_h(){moveCursor(-1, 0, 0);}
+void vim_j(){moveCursor( 0, 1, 0);}
+void vim_k(){moveCursor( 0,-1, 0);}
+void vim_l(){moveCursor( 1, 0, 0);}
 
 //Insert mode
 void vim_i(){vimMode = VIM_INSERT; KSDL_changeCursor(cursor, '|', -0.5);}
@@ -644,7 +733,15 @@ int main(int argc, char** argv) {
 
                                 //Movements
                                 case SDLK_4:  vim_$(); break;
+                                case SDLK_5:  vim_percentage(); break;
+
+                                //Submodes switch
+                                case SDLK_c:  vim_C(); break;
+                                case SDLK_d:  vim_D(); break;
                             }
+                        /*
+                         * NO Modififiers
+                         **/
                         }else{
                             switch(event.key.keysym.sym){
                                 case SDLK_ESCAPE: vim_escape(); break;
@@ -658,12 +755,12 @@ int main(int argc, char** argv) {
                                 case SDLK_w:  vim_w(); break;
                                 case SDLK_b:  vim_b(); break;
                                 case SDLK_0:  vim_0(); break;
-                                case SDLK_h:  moveCursor(-1, 0, 0); break;
-                                case SDLK_j:  moveCursor( 0, 1, 0); break;
-                                case SDLK_k:  moveCursor( 0,-1, 0); break;
-                                case SDLK_l:  moveCursor( 1, 0, 0); break;
                                 case SDLK_f:  vim_f(); break;
                                 case SDLK_t:  vim_t(); break;
+                                case SDLK_h:  vim_h(); break;
+                                case SDLK_j:  vim_j(); break;
+                                case SDLK_k:  vim_k(); break;
+                                case SDLK_l:  vim_l(); break;
 
                                 //Submodes switch
                                 case SDLK_c:  vim_c(); break;

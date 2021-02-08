@@ -30,9 +30,9 @@ char textBuffer[BUFFER_SIZE];
 typedef enum {INPUT_SIMPLE, INPUT_VIM} InputMode;
 InputMode inputMode = INPUT_VIM;
 typedef enum {VIM_NORMAL, VIM_INSERT, VIM_REPLACE} VimMode;
-typedef enum {VIM_NONE, VIM_CHANGE, VIM_DELETE} VimSubMode;
+typedef enum {SUBVIM_NONE, SUBVIM_CHANGE, SUBVIM_DELETE} VimSubMode;
 VimMode vimMode = VIM_NORMAL;
-VimSubMode vimSubMode = VIM_NONE;
+VimSubMode vimSubMode = SUBVIM_NONE;
 
 //Console
 KSDL_Text* consolePanel;
@@ -377,20 +377,20 @@ int jumpWord(int dir){
 
 void vim_i();
 void motionTo(int pos){
-    if (vimSubMode == VIM_NONE){
+    if (vimSubMode == SUBVIM_NONE){
         moveCursorAbsolute(pos);
 
-    }else if (vimSubMode == VIM_CHANGE){
+    }else if (vimSubMode == SUBVIM_CHANGE){
         deleteCharsFromTo(cursor->pos, pos);
         moveCursorAbsolute(cursor->pos);
         vim_i();
 
-    }else if (vimSubMode == VIM_DELETE){
+    }else if (vimSubMode == SUBVIM_DELETE){
         deleteCharsFromTo(cursor->pos, pos);
         moveCursorAbsolute(cursor->pos);
     }
     KSDL_updateText(textArea);
-    vimSubMode = VIM_NONE;
+    vimSubMode = SUBVIM_NONE;
 }
 
 
